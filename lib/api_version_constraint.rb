@@ -4,7 +4,7 @@ class ApiVersionConstraint
     @default = options[:default]
   end
 
-  def mathces?(req)
+  def matches?(req)
     @default || req.headers['Accept'].include?("application/vnd.taskmanager.v#{@version}")
   end
 end
