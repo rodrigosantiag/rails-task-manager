@@ -1,35 +1,40 @@
 require 'rails_helper'
 
 RSpec.describe 'Sessions API', type: :request do
-  before { host! 'api.taskmanager.local' }
-  let(:user) { create(:user) }
+  before {host! 'api.taskmanager.local'}
+  let!(:user) {create(:user)}
+  let!(:auth_data) {user.create_new_auth_token}
   let(:headers) do
     {
         'Accept' => 'application/vnd.taskmanager.v2',
-        'Content-type' => Mime[:json].to_s
+        'Content-type' => Mime[:json].to_s,
+        'access-token' => auth_data['access-token'],
+        'uid' => auth_data['uid'],
+        'client' => auth_data['client'],
     }
   end
 
-  describe 'POST /sessions' do
+  describe 'POST /auth/sign_in' do
     before do
-      post '/sessions', params: { session: credentials }.to_json, headers: headers
+      post '/auth/sign_in', params: credentials.to_json, headers: headers
     end
 
     context 'when credentials are correct' do
-      let(:credentials) { { email: user.email, password: '123456' } }
+      let(:credentials) {{email: user.email, password: '123456'}}
 
       it 'returns status code 200' do
         expect(response).to have_http_status(200)
       end
 
-      it 'returns json data for the user with auth token' do
-        user.reload
-        expect(json_body[:data][:attributes][:'auth-token']).to eq(user.auth_token)
+      it 'returns authentication data in headers' do
+        expect(response.headers).to have_key('access-token')
+        expect(response.headers).to have_key('uid')
+        expect(response.headers).to have_key('client')
       end
     end
 
     context 'when credentials are incorrect' do
-      let(:credentials) { { email: user.email, password: 'invalid_password' } }
+      let(:credentials) {{email: user.email, password: 'invalid_password'}}
 
       it 'returns status code 401' do
         expect(response).to have_http_status(401)
@@ -41,19 +46,19 @@ RSpec.describe 'Sessions API', type: :request do
     end
   end
 
-  describe 'DELETE /sessions/:id' do
-    let(:auth_token) { user.auth_token }
+  describe 'DELETE /auth/sign_out' do
 
     before do
-      delete "/sessions/#{auth_token}", params: {}, headers: headers
+      delete '/auth/sign_out', params: {}, headers: headers
     end
 
-    it 'returns status code 204' do
-      expect(response).to have_http_status(204)
+    it 'returns status code 200' do
+      expect(response).to have_http_status(200)
     end
 
-    it 'changes user auth token' do
-      expect( User.find_by(auth_token: auth_token) ).to be_nil
+    it 'access token is invalid' do
+      user.reload
+      expect(user.valid_token?(auth_data['access-token'], auth_data['client'])).to be_falsey
     end
 
   end

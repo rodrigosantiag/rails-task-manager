@@ -11,7 +11,7 @@ RSpec.describe 'Tasks API', type: :request do
         'Content-Type' => Mime[:json].to_s,
         'access-token' => auth_data['access-token'],
         'uid' => auth_data['uid'],
-        'client' => auth_data['client'],
+        'client' => auth_data['client']
     }
   end
 
